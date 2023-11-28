@@ -33,6 +33,14 @@ def inline_admin_keyboard():
     return admin_inline_builder.as_markup()
 
 
+def inline_back_admin_keyboard():
+    back_admin_inline_keyboard = InlineKeyboardBuilder()
+    back_admin_inline_keyboard.button(text='Назад', callback_data='back_admin')
+
+    back_admin_inline_keyboard.adjust(1)
+    return back_admin_inline_keyboard.as_markup()
+
+
 def inline_get_buttons_keyboard():
     get_buttons_inline_keyboard = InlineKeyboardBuilder()
     get_buttons_inline_keyboard.button(
@@ -51,13 +59,3 @@ def inline_get_image_keyboard():
         text='Нет, не добавлять', callback_data='no_image')
     get_image_inline_keyboard.adjust(2)
     return get_image_inline_keyboard.as_markup()
-
-
-def inline_sender_keyboard():
-    sender_inline_keyboard = InlineKeyboardBuilder()
-    sender_inline_keyboard.button(
-        text='Да, разослать', callback_data='accept_sender')
-    sender_inline_keyboard.button(
-        text='Отменить рассылку', callback_data='decline_sender')
-    sender_inline_keyboard.adjust(2)
-    return sender_inline_keyboard

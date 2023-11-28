@@ -5,13 +5,13 @@ from core.utils import sqlite
 from aiogram.fsm.context import FSMContext
 from core.utils.statesform import StepsForm, SenderSteps
 from aiogram.filters import CommandObject
-from core.keyboards.inline import inline_admin_keyboard, inline_get_buttons_keyboard, inline_get_image_keyboard, inline_sender_keyboard
+from core.keyboards.inline import inline_admin_keyboard, inline_get_buttons_keyboard, inline_get_image_keyboard, inline_back_admin_keyboard
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InputFile
 
 
-async def admin_panel(message: types.Message, bot: Bot):
+async def admin_panel(message: Message):
     await message.answer("✅Включён режим администратора✅",
                          reply_markup=inline_admin_keyboard())
 
@@ -27,11 +27,16 @@ async def upgrade_profile(message: types.Message, state: FSMContext, bot: Bot):
     await message.answer("Пользователь успешно внесён в базу данных курса✅")
     await state.clear()
 
+
+async def back_admin_panel(callback_query: types.CallbackQuery, state: FSMContext):
+    await callback_query.message.edit_text("Действие отменено!", reply_markup=None)
+    await state.clear()
+
 # РАССЫЛКА СООБЩЕНИЙ
 
 
 async def get_sender(callback_query: types.CallbackQuery, state: FSMContext):
-    await callback_query.message.answer("Отправьте мне текст для рассылки")
+    await callback_query.message.answer("Отправьте мне текст для рассылки", reply_markup=inline_back_admin_keyboard())
     await state.set_state(SenderSteps.GET_MESSAGE)
 
 
@@ -41,14 +46,12 @@ async def get_message(message: Message, state: FSMContext):
     await message.answer("Отлично, я запомнил ваш текст!  Добавлять ли кнопки?", reply_markup=inline_get_buttons_keyboard())
 
 
-async def q_button(callback_query: types.CallbackQuery, state: FSMContext):
+async def q_button(callback_query: types.CallbackQuery, state: FSMContext, bot: Bot):
     if callback_query.data == 'add_button':
         await callback_query.message.answer("Какой добавить текст для кнопки?")
         await state.set_state(SenderSteps.GET_TEXT_BUTTON)
     elif callback_query.data == 'no_button':
-        # здесь должен быть вызов функции
-
-        await q_image(callback_query.message)
+        await q_image(state, bot)
 
 
 async def get_text_button(message: Message, state: FSMContext):
@@ -60,17 +63,16 @@ async def get_text_button(message: Message, state: FSMContext):
 async def get_url_button(message: Message, state: FSMContext, bot: Bot):
     # IF GET.DATA(TEXT_BUTTON) != NONE
     await state.update_data(url_button=message.text)
-    message = 'Добавлять ли изображение?'
-    await q_image(state, bot, message)
+    await q_image(state, bot)
 
 
-async def q_image(state: FSMContext, bot: Bot, message):
+async def q_image(state: FSMContext, bot: Bot):
     data = await state.get_data()
     user_id = int(data.get('user_id'))
-    await bot.send_message(user_id, message, reply_markup=inline_get_image_keyboard())
+    await bot.send_message(user_id, 'Добавлять ли изображение?', reply_markup=inline_get_image_keyboard())
 
 
-async def get_image(callback_query: types.CallbackQuery, state: FSMContext):
+async def get_image(callback_query: types.CallbackQuery, state: FSMContext, bot: Bot):
     if callback_query.data == 'add_image':
         await callback_query.message.answer("Отправьте изображение, которое нужно прикрепить к рассылке")
         await state.set_state(SenderSteps.GET_FILE_IMAGE)
@@ -80,7 +82,10 @@ async def get_image(callback_query: types.CallbackQuery, state: FSMContext):
         user_id = int(data.get('user_id'))
         text_button = str(data.get('text_button', None))
         url_button = str(data.get('url_button', None))
-        await confirm(message_text, user_id, text_button, url_button)
+        photo = None
+        await confirm(callback_query.message, state, bot, photo, message_text, user_id, text_button, url_button)
+
+# 'message_text', 'user_id', 'text_button', and 'url_button'
 
 
 async def get_file_image(message: Message, state: FSMContext, bot: Bot):
@@ -103,34 +108,64 @@ async def get_file_image(message: Message, state: FSMContext, bot: Bot):
 
 
 async def confirm(message: Message, state: FSMContext, bot: Bot, photo, message_text, user_id: int, text_button, url_button: str):
-    if text_button is not None:  # Если кнопка существует
-        added_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text=(await state.get_data()).get('text_button'), url=f'{url_button}')
-            ]
-        ])
+    added_keyboard = None
 
-        if photo is not None:  # Если фото существует
+    if text_button:
+        text_button_value = (await state.get_data()).get('text_button')
+        if text_button_value:
+            added_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text=text_button_value, url=url_button)]
+            ])
 
+    if photo is not None:
+        if added_keyboard:
             await bot.send_photo(user_id, photo, caption=message_text, reply_markup=added_keyboard)
         else:
-            await bot.send_message(user_id, message_text, reply_markup=added_keyboard)
-
-    elif text_button is None:  # Если кнопки не существует
-        if photo is not None:  # Если фото существует
             await bot.send_photo(user_id, photo, caption=message_text)
-        elif photo is None:
-            await bot.send_message(user_id, message_text)
+    elif added_keyboard:
+        await bot.send_message(user_id, message_text, reply_markup=added_keyboard)
+    else:
+        await bot.send_message(user_id, message_text)
 
     add_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text='Опубликовать',
-                                 callback_data='accept_sender')
-        ],
-        [
-            InlineKeyboardButton(
-                text='Отменить рассылку', callback_data='decline_sender')
-        ]
+        [InlineKeyboardButton(text='Опубликовать',
+                              callback_data='accept_sender')],
+        [InlineKeyboardButton(text='Отменить рассылку',
+                              callback_data='decline_sender')]
     ])
+
     await message.answer("Вот ваш итоговый текст. Опубликовать рассылку?", reply_markup=add_keyboard)
     await state.clear()
+
+# async def confirm(message: Message, state: FSMContext, bot: Bot, photo, message_text, user_id: int, text_button, url_button: str):
+#     if text_button and url_button is not None:  # Если кнопка существует
+#         added_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+#             [
+#                 InlineKeyboardButton(text=(await state.get_data()).get('text_button'), url=f'{url_button}')
+#             ]
+#         ])
+
+#         if photo is not None:  # Если фото существует
+
+#             await bot.send_photo(user_id, photo, caption=message_text, reply_markup=added_keyboard)
+#         elif photo is None:
+#             await bot.send_message(user_id, message_text, reply_markup=added_keyboard)
+
+#     elif text_button and url_button is None:  # Если кнопки не существует
+#         if photo is not None:  # Если фото существует
+#             await bot.send_photo(user_id, photo, caption=message_text)
+#         elif photo is None:
+#             await bot.send_message(user_id, message_text)
+
+#     add_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+#         [
+#             InlineKeyboardButton(text='Опубликовать',
+#                                  callback_data='accept_sender')
+#         ],
+#         [
+#             InlineKeyboardButton(
+#                 text='Отменить рассылку', callback_data='decline_sender')
+#         ]
+#     ])
+#     await message.answer("Вот ваш итоговый текст. Опубликовать рассылку?", reply_markup=add_keyboard)
+#     await state.clear()
