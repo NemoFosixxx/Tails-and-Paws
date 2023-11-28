@@ -43,11 +43,12 @@ async def get_message(message: Message, state: FSMContext):
 
 async def q_button(callback_query: types.CallbackQuery, state: FSMContext):
     if callback_query.data == 'add_button':
-        await callback_query.message.answer("Какой добавить текст для кнопки?", reply_markup=None)
+        await callback_query.message.answer("Какой добавить текст для кнопки?")
         await state.set_state(SenderSteps.GET_TEXT_BUTTON)
     elif callback_query.data == 'no_button':
         # здесь должен быть вызов функции
-        await state.set_state(SenderSteps.Q_IMAGE)
+
+        await q_image(callback_query.message)
 
 
 async def get_text_button(message: Message, state: FSMContext):
@@ -56,16 +57,17 @@ async def get_text_button(message: Message, state: FSMContext):
     await state.set_state(SenderSteps.GET_URL_BUTTON)
 
 
-async def get_url_button(message: Message, state: FSMContext):
+async def get_url_button(message: Message, state: FSMContext, bot: Bot):
     # IF GET.DATA(TEXT_BUTTON) != NONE
     await state.update_data(url_button=message.text)
-    await message.answer("Я сохранил вашу кнопку!")
-    # здесь должен быть вызов функции
-    await state.set_state(SenderSteps.Q_IMAGE)
+    message = 'Добавлять ли изображение?'
+    await q_image(state, bot, message)
 
 
-async def q_image(message: Message, state: FSMContext):
-    await message.answer("Добавлять ли изображение?", reply_markup=inline_get_image_keyboard())
+async def q_image(state: FSMContext, bot: Bot, message):
+    data = await state.get_data()
+    user_id = int(data.get('user_id'))
+    await bot.send_message(user_id, message, reply_markup=inline_get_image_keyboard())
 
 
 async def get_image(callback_query: types.CallbackQuery, state: FSMContext):
@@ -78,7 +80,7 @@ async def get_image(callback_query: types.CallbackQuery, state: FSMContext):
         user_id = int(data.get('user_id'))
         text_button = str(data.get('text_button', None))
         url_button = str(data.get('url_button', None))
-        confirm(message_text, user_id, text_button, url_button)
+        await confirm(message_text, user_id, text_button, url_button)
 
 
 async def get_file_image(message: Message, state: FSMContext, bot: Bot):
@@ -96,36 +98,12 @@ async def get_file_image(message: Message, state: FSMContext, bot: Bot):
 
         await confirm(message, state, bot, photo, message_text, user_id, text_button, url_button)
     else:
-        print("Фотография не получена.")
-
-    # Ваш код confirm здесь
-    # ...
-
-    # async def get_file_image(message: Message, state: FSMContext, bot: Bot):
-    #     file = await bot.get_file(message.photo[-1].file_id)
-    #     await state.update_data(photo=bot.download_file(file.file_path, 'core\images\image_sender\image.png'))
-
-    #     data = await state.get_data()
-    #     photo = data.get('photo')
-    #     message_text = data.get('message_text')
-    #     user_id = data.get('user_id')
-    #     text_button = data.get('text_button', None)
-    #     url_button = data.get('url_button', None)
-    #     confirm(photo, message_text, user_id, text_button, url_button)
-
-    # async def confirm(message: Message, state: FSMContext, bot: Bot, photo, message_text, user_id, text_button, url_button):
-    # photo = FSInputFile(r'core\images\image_sender\image.jpg')
-    # data = await state.get_data()
-    # photo = data.get('photo')
-    # message_text = str(data.get('message_text'))
-    # user_id = int(data.get('user_id'))
-    # text_button = str(data.get('text_button', None))
-    # url_button = str(data.get('url_button', None))
+        message.answer(
+            "Случилась какая-то ошибка и фотография не была получена. Попробуйте сначала.")
 
 
 async def confirm(message: Message, state: FSMContext, bot: Bot, photo, message_text, user_id: int, text_button, url_button: str):
     if text_button is not None:  # Если кнопка существует
-        print(url_button)
         added_keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [
                 InlineKeyboardButton(text=(await state.get_data()).get('text_button'), url=f'{url_button}')
@@ -144,68 +122,15 @@ async def confirm(message: Message, state: FSMContext, bot: Bot, photo, message_
         elif photo is None:
             await bot.send_message(user_id, message_text)
 
-    await message.answer("Вот ваш итоговый текст. Опубликовать рассылку?", reply_markup=inline_sender_keyboard())
-
-
-# added_keyboards = InlineKeyboardMarkup(inline_keyboard=[
-#     [
-#         InlineKeyboardButton(text=(await state.get_data()).get('text_button'),
-#                              url=f'{message.text}'
-#                              )
-#     ]
-# ])
-# await state.update_data(keyboard=added_keyboards)
-# Добавить FSM
-
-# async def get_image(message: types.Message, bot: Bot, state: FSMContext):
-# data = await state.get_data()
-# message_id = int(data.get('message_id'))              ВСЁ В ДРУГУЮ В ОКОНЧАТЕЛЬНУЮ ФУНКЦИЮ
-# chat_id = int(data.get('chat_id'))
-# added_keyboards = (data.get('added_keyboards')) # работает ли? СДЕЛАТЬ БИЛДЕРОМ + РЕТУРНОМ (ВЫНЕСТИ В МЕТОД)
-# await self.confirm(message, bot, message_id, chat_id, added_keyboards)
-
-# await message.answer("Добавлять ли картинку?", reply_markup=inline_get_image_keyboard())
-# await state.set_state(SenderSteps.Q_IMAGE)
-# file = await bot.get_file(message.photo[-1].file_id)
-# await bot.download_file(file.file_path, 'core\images\image.png')
-
-    # await self.get_image(callback_query.message, bot, message_id, chat_id, )
-
-# async def confirm(self, message: Message, bot: Bot, message_id: int, chat_id: int, reply_markup: InlineKeyboardMarkup = None, photo: FSInputFile = None):
-#     # Копируется сообщение, добавляется кнопка, при наличии и отправляется админу
-#     await bot.copy_message(chat_id, chat_id, message_id, reply_markup=reply_markup)
-#     await message.answer(f'Вот сообщение, которое будет отправлено: \n Подтверди.', reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-#         [
-#             InlineKeyboardButton(
-#                 text='Подтвердить', callback_data='confirm_sender'
-#             )
-#         ],
-#         [
-#             InlineKeyboardButton(
-#                 text='Отклонить', callback_data='decline_sender'
-#             )
-#         ]
-#     ]))
-
-
-# async def sender_decide(callback_query: types.CallbackQuery, bot: Bot, state: FSMContext):
-#     data = await state.get_data()
-#     message_id = int(data.get('message_id'))
-#     chat_id = int(data.get('chat_id'))
-#     text_button = data.get("text_button")
-#     url_button = data.get("button_url")
-
-#     if callback_query.data == 'confirm_sender':
-#         await callback_query.message.edit_text('Начинаю рассылку', reply_markup=None)
-#     elif callback_query.data == 'decline_sender':
-#         await callback_query.message.edit_text('Отменил рассылку', reply_markup=None)
-
-#     await state.clear()
-
-    # added_keyboards = InlineKeyboardMarkup(inline_keyboard=[
-    #     [
-    #         InlineKeyboardButton(text=(await state.get_data()).get('text_button'),
-    #                              url=f'{message.text}'
-    #                              )
-    #     ]
-    # ])
+    add_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text='Опубликовать',
+                                 callback_data='accept_sender')
+        ],
+        [
+            InlineKeyboardButton(
+                text='Отменить рассылку', callback_data='decline_sender')
+        ]
+    ])
+    await message.answer("Вот ваш итоговый текст. Опубликовать рассылку?", reply_markup=add_keyboard)
+    await state.clear()
