@@ -13,7 +13,7 @@ class StepsForm(StatesGroup):
 class SenderSteps(StatesGroup):
     GET_MESSAGE = State()
     Q_BUTTON = State()
-    GET_BUTTON = State()
+    GET_TEXT_BUTTON = State()
     GET_URL_BUTTON = State()
     Q_IMAGE = State()
-    GET_IMAGE = State()
+    GET_FILE_IMAGE = State()

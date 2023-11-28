@@ -46,8 +46,18 @@ def inline_get_buttons_keyboard():
 def inline_get_image_keyboard():
     get_image_inline_keyboard = InlineKeyboardBuilder()
     get_image_inline_keyboard.button(
-        text='Да, добавить', callback_data='add_image_sender')
+        text='Да, добавить', callback_data='add_image')
     get_image_inline_keyboard.button(
-        text='Нет, не добавлять', callback_data='no_image_sender')
+        text='Нет, не добавлять', callback_data='no_image')
     get_image_inline_keyboard.adjust(2)
     return get_image_inline_keyboard.as_markup()
+
+
+def inline_sender_keyboard():
+    sender_inline_keyboard = InlineKeyboardBuilder()
+    sender_inline_keyboard.button(
+        'Да, разослать', callback_data='accept_sender')
+    sender_inline_keyboard.button(
+        text='Отменить рассылку', callback_data='decline_sender')
+    sender_inline_keyboard.adjust(2)
+    return sender_inline_keyboard
