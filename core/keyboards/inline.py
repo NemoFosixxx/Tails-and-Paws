@@ -56,7 +56,7 @@ def inline_get_image_keyboard():
 def inline_sender_keyboard():
     sender_inline_keyboard = InlineKeyboardBuilder()
     sender_inline_keyboard.button(
-        'Да, разослать', callback_data='accept_sender')
+        text='Да, разослать', callback_data='accept_sender')
     sender_inline_keyboard.button(
         text='Отменить рассылку', callback_data='decline_sender')
     sender_inline_keyboard.adjust(2)
