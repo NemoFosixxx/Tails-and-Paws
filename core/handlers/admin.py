@@ -5,7 +5,7 @@ from core.utils import sqlite
 from aiogram.fsm.context import FSMContext
 from core.utils.statesform import StepsForm, SenderSteps
 from aiogram.filters import CommandObject
-from core.keyboards.inline import inline_admin_keyboard, inline_get_buttons_keyboard, inline_get_image_keyboard, inline_back_admin_keyboard
+from core.keyboards.inline import inline_admin_keyboard, inline_get_buttons_keyboard, inline_get_image_keyboard, inline_back_admin_keyboard, inline_send_to_upgrade_user_keyboard
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InputFile
@@ -22,9 +22,23 @@ async def get_profile(callback_query: types.CallbackQuery, state: FSMContext, bo
         await state.set_state(StepsForm.GET_FORWARDS_MESSAGE)
 
 
+async def get_profile_for_delete(callback_query: types.CallbackQuery, state: FSMContext, bot: Bot):
+    if callback_query.from_user.id == settings.bots.admin_id or settings.bots.base_admin_id:
+        await callback_query.message.answer("Перешлите сообщение от пользователя мне. Я **удалю** его из списка пользователей, которые купили курс.")
+        await state.set_state(StepsForm.GET_FORWARDS_MESSAGE_FOR_DELETE)
+
+
 async def upgrade_profile(message: types.Message, state: FSMContext, bot: Bot):
     await sqlite.upgrade_profile(user_id=message.forward_from.id, username=message.forward_from.username)
     await message.answer("Пользователь успешно внесён в базу данных курса✅")
+    await bot.send_message(message.forward_from.id, "Привет, {user}! Спасибо за приобретение данного курса. Чтобы начать обучение, нажмите 'Начать'".format(user=message.forward_from.username), reply_markup=inline_send_to_upgrade_user_keyboard())
+    await state.clear()
+
+
+async def delete_profile(message: types.Message, state: FSMContext, bot: Bot):  # ЗАРЕГАТЬ
+    await sqlite.delete_profile(user_id=message.forward_from.id, username=message.forward_from.username)
+    await message.answer("Пользователь был удалён из базы данных🚮")
+    await bot.send_message(message.forward_from.id, "Привет, по каким-то причинам вы были удалены из пользователей курса. Если это ошибка, свяжитесь с нами!")
     await state.clear()
 
 
@@ -136,36 +150,3 @@ async def confirm(message: Message, state: FSMContext, bot: Bot, photo, message_
 
     await message.answer("Вот ваш итоговый текст. Опубликовать рассылку?", reply_markup=add_keyboard)
     await state.clear()
-
-# async def confirm(message: Message, state: FSMContext, bot: Bot, photo, message_text, user_id: int, text_button, url_button: str):
-#     if text_button and url_button is not None:  # Если кнопка существует
-#         added_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-#             [
-#                 InlineKeyboardButton(text=(await state.get_data()).get('text_button'), url=f'{url_button}')
-#             ]
-#         ])
-
-#         if photo is not None:  # Если фото существует
-
-#             await bot.send_photo(user_id, photo, caption=message_text, reply_markup=added_keyboard)
-#         elif photo is None:
-#             await bot.send_message(user_id, message_text, reply_markup=added_keyboard)
-
-#     elif text_button and url_button is None:  # Если кнопки не существует
-#         if photo is not None:  # Если фото существует
-#             await bot.send_photo(user_id, photo, caption=message_text)
-#         elif photo is None:
-#             await bot.send_message(user_id, message_text)
-
-#     add_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-#         [
-#             InlineKeyboardButton(text='Опубликовать',
-#                                  callback_data='accept_sender')
-#         ],
-#         [
-#             InlineKeyboardButton(
-#                 text='Отменить рассылку', callback_data='decline_sender')
-#         ]
-#     ])
-#     await message.answer("Вот ваш итоговый текст. Опубликовать рассылку?", reply_markup=add_keyboard)
-#     await state.clear()

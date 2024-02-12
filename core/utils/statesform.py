@@ -8,6 +8,7 @@ from aiogram.fsm.state import StatesGroup, State
 
 class StepsForm(StatesGroup):
     GET_FORWARDS_MESSAGE = State()
+    GET_FORWARDS_MESSAGE_FOR_DELETE = State()
 
 
 class SenderSteps(StatesGroup):

@@ -11,8 +11,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def inline_start_keyboard():
     start_inline_builder = InlineKeyboardBuilder()
-    start_inline_builder.button(text="Оплата",
-                                url="https://t.me/KseniaKiz")
+    start_inline_builder.button(text="Купить (О нас)",
+                                callback_data='buy_info')
     start_inline_builder.button(text="Наш новостной канал",
                                 url='https://t.me/HvostiiLapi')
     start_inline_builder.button(text="Помощь",
@@ -22,14 +22,27 @@ def inline_start_keyboard():
     return start_inline_builder.as_markup()
 
 
+def inline_buy_info_keyboard():
+    buy_info_inline_builder = InlineKeyboardBuilder()
+    buy_info_inline_builder.button(
+        text="Связаться для оплаты", url='https://t.me/KseniaKiz')
+    buy_info_inline_builder.button(text="Назад",
+                                   callback_data='buy_back')
+    buy_info_inline_builder.adjust(1, 2)
+
+    return buy_info_inline_builder.as_markup()
+
+
 def inline_admin_keyboard():
     admin_inline_builder = InlineKeyboardBuilder()
     admin_inline_builder.button(
         text='Апгрейд пользователя', callback_data='upgrade_user')
     admin_inline_builder.button(
+        text='Удаление пользователя', callback_data='delete_user')
+    admin_inline_builder.button(
         text='Рассылка сообщений', callback_data='sender')
 
-    admin_inline_builder.adjust(1, 1)
+    admin_inline_builder.adjust(2, 1)
     return admin_inline_builder.as_markup()
 
 
@@ -59,3 +72,12 @@ def inline_get_image_keyboard():
         text='Нет, не добавлять', callback_data='no_image')
     get_image_inline_keyboard.adjust(2)
     return get_image_inline_keyboard.as_markup()
+
+
+def inline_send_to_upgrade_user_keyboard():  # При покупке пользователем курса.
+    send_upgrade_user_keyboard = InlineKeyboardBuilder()
+    send_upgrade_user_keyboard.button(
+        text="Начать!", callback_data='upgrade_user_start')  # Здесь должна быть reply кнопка
+    send_upgrade_user_keyboard.adjust(1)
+
+    return send_upgrade_user_keyboard.as_markup()

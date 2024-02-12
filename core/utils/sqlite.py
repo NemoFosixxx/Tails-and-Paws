@@ -36,5 +36,22 @@ async def upgrade_profile(user_id, username):
     db.commit()
 
 
+async def delete_profile(user_id, username):
+    user = cur.execute(
+        "SELECT 1 FROM authorized_profile WHERE user_id == '{key}'".format(key=user_id)).fetchone()
+    if user:
+        cur.execute(
+            "DELETE FROM authorized_profile WHERE user_id == '{key}'".format(key=user_id)).fetchone()
+        cur.execute("INSERT INTO default_profile VALUES(?, ?)",
+                    (user_id, username))
+    db.commit()
+
+
+async def check_user_exist(user_id):
+    user = cur.execute(
+        "SELECT 1 FROM authorized_profile WHERE user_id == '{key}'".format(key=user_id)).fetchone()
+    return bool(user)
+
+
 async def get_default_users():
     return cur.execute("SELECT user_id FROM default_profile").fetchall
